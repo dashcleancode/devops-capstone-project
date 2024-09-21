@@ -2,6 +2,7 @@
 #   - git-clone
 #   - flake8
 #   - nose
+#   - buildah
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -16,6 +17,8 @@ spec:
     - name: branch
       type: string
       default: main
+    - name: build-image
+      type: string
   tasks:
     - name: init
       workspaces:
@@ -59,9 +62,22 @@ spec:
       taskRef:
         name: nose
       params:
-        - name: database_uri
-          value: "sqlite:///test.db"
         - name: args
           value: "-v --with-spec --spec-color"
       runAfter:
         - clone
+
+    - name: build
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      params:
+        - name: IMAGE
+          value: "$(params.build-image)"
+      runAfter:
+        - tests
+        - lint
+
