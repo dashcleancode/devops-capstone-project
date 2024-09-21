@@ -123,7 +123,7 @@ class TestAccountService(TestCase):
             BASE_URL, json=account.serialize(), content_type="test/html"
         )
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-        
+
     def test_get_account(self):
         """It should return the details of the account ID"""
         account = self._create_accounts(1)[0]
