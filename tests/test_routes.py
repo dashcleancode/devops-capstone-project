@@ -20,13 +20,12 @@ DATABASE_URI = os.getenv(
 
 BASE_URL = "/accounts"
 
-HTTPS_ENVIRON = {"wsgi.url_scheme": "https"}
+HTTPS_ENVIRON = {'wsgi.url_scheme': 'https'}
+
 
 ######################################################################
 #  T E S T   C A S E S
 ######################################################################
-
-
 class TestAccountService(TestCase):
     """Account Service Tests"""
 
@@ -95,7 +94,9 @@ class TestAccountService(TestCase):
         """It should Create a new Account"""
         account = AccountFactory()
         response = self.client.post(
-            BASE_URL, json=account.serialize(), content_type="application/json"
+            BASE_URL,
+            json=account.serialize(),
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -120,59 +121,167 @@ class TestAccountService(TestCase):
         """It should not Create an Account when sending the wrong media type"""
         account = AccountFactory()
         response = self.client.post(
-            BASE_URL, json=account.serialize(), content_type="test/html"
+            BASE_URL,
+            json=account.serialize(),
+            content_type="test/html"
         )
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-        
-    def test_get_account(self):
-        """It should return the details of the account ID"""
-        account = self._create_accounts(1)[0]
-        response = self.client.get(
-            f"{BASE_URL}/{account.id}", content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(data["name"], account.name)
 
-    def test_get_account_not_found(self):
-        response = self.client.get(f"{BASE_URL}/0")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    # ADD YOUR TEST CASES HERE ...
+
+    def test_read_an_account(self):
+        """It should return an account by id"""
+        account = self._create_accounts(1)[0]
+        
+        read_response = self.client.get(
+            f"{BASE_URL}/{account.id}",
+            content_type="application/json"
+            )
+        self.assertEqual(
+            read_response.status_code, 
+            status.HTTP_200_OK )
+
+        deserialized_read_response = read_response.get_json()
+        self.assertEqual(
+            deserialized_read_response['name'],
+            account.name
+        )
+
+    def test_accont_not_found(self):
+        """It shoudl not return an account"""
+
+        read_response = self.client.get(
+            f"{BASE_URL}/{0}",
+            content_type="application/json"
+            )
+        self.assertEqual(
+            read_response.status_code, 
+            status.HTTP_404_NOT_FOUND )
+
 
     def test_update_account(self):
-        """It should Update an existing Account"""
-        # create an Account to update
-        test_account = AccountFactory()
-        resp = self.client.post(BASE_URL, json=test_account.serialize())
-        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        """It should update an account"""
 
-        # update the account
-        new_account = resp.get_json()
-        new_account["name"] = "Something Known"
-        resp = self.client.put(f"{BASE_URL}/{new_account['id']}", json=new_account)
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        updated_account = resp.get_json()
-        self.assertEqual(updated_account["name"], "Something Known")
+        test_account = AccountFactory()
+
+        org_respone = self.client.post(
+            f"{BASE_URL}", 
+            json=test_account.serialize()
+            )        
+        self.assertEqual(
+            org_respone.status_code, 
+            status.HTTP_201_CREATED )
+        
+        new_account = org_respone.get_json()
+        new_account['name'] = "new Name"
+        update_respone = self.client.put(
+            f"{BASE_URL}/{new_account['id']}", 
+            json=new_account
+            )
+        self.assertEqual(
+            update_respone.status_code, 
+            status.HTTP_200_OK )
+        
+        updated_account = update_respone.get_json()
+        self.assertEqual(
+            updated_account['name'],
+            "new Name"
+        )
+
+    def test_list_accounts(self):
+        """It should list the accounts"""
+
+        self._create_accounts(5)
+        
+        requested_accounts = self.client.get(
+            f"{BASE_URL}"
+        )
+        self.assertEqual(
+            requested_accounts.status_code, 
+            status.HTTP_200_OK )
+
+        self.assertEqual(
+            len(requested_accounts.get_json()),
+            5
+        )
 
     def test_delete_account(self):
-        """It should Delete an Account"""
+        """It should delete an account"""
+
         account = self._create_accounts(1)[0]
-        resp = self.client.delete(f"{BASE_URL}/{account.id}")
-        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+        read_response = self.client.delete(
+            f"{BASE_URL}/{account.id}",
+            content_type="application/json"
+            )
+        
+        self.assertEqual(
+            read_response.status_code,
+            status.HTTP_204_NO_CONTENT
+        )
+        
+        read_response = self.client.get(
+            f"{BASE_URL}/{account.id}",
+            content_type="application/json"
+            )
+        self.assertEqual(
+            read_response.status_code, 
+            status.HTTP_404_NOT_FOUND )
 
-    def test_method_not_allowed(self):
-        """It should not allow an illegal method call"""
-        resp = self.client.delete(BASE_URL)
-        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+    def test_error_handling(self):
+        """It should test invalid routes"""
 
+        read_response = self.client.delete(
+            f"{BASE_URL}",
+            content_type="application/json"
+            )
+        
+        self.assertEqual(
+            read_response.status_code,
+            status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
     def test_security_headers(self):
-        """It should return security headers"""
-        response = self.client.get("/", environ_overrides=HTTPS_ENVIRON)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        headers = {
-            "X-Frame-Options": "SAMEORIGIN",
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": "default-src 'self'; object-src 'none'",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-        }
-        for key, value in headers.items():
-            self.assertEqual(response.headers.get(key), value)
+        """ It should test the presence of security headers"""
+
+        read_response = self.client.get(
+            "/",
+            environ_overrides=HTTPS_ENVIRON
+            )
+        self.assertEqual(
+            read_response.status_code,
+            status.HTTP_200_OK
+        )
+        
+        self.assertEqual(
+            read_response.headers.get('X-Frame-Options'),
+            'SAMEORIGIN'
+        )
+        self.assertEqual(
+            read_response.headers.get('X-Content-Type-Options'),
+            'nosniff'
+        )
+        self.assertEqual(
+            read_response.headers.get('Content-Security-Policy'),
+            'default-src \'self\'; object-src \'none\''
+        )
+        self.assertEqual(
+            read_response.headers.get('Referrer-Policy'),
+            'strict-origin-when-cross-origin'
+        )
+
+    def test_CORS_plicies(self):
+        """ It should test the presence of CORS policies"""
+
+        read_response = self.client.get(
+            "/",
+            environ_overrides=HTTPS_ENVIRON
+            )
+        self.assertEqual(
+            read_response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.assertEqual(
+            read_response.headers.get('Access-Control-Allow-Origin'),
+            '*'
+        )        
