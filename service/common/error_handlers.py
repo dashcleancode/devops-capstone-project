@@ -22,9 +22,7 @@ def bad_request(error):
     message = str(error)
     app.logger.warning(message)
     return (
-        jsonify(
-            status=status.HTTP_400_BAD_REQUEST, error="Bad Request", message=message
-        ),
+        jsonify(status=status.HTTP_400_BAD_REQUEST, error="BAD", message=message),
         status.HTTP_400_BAD_REQUEST,
     )
 
