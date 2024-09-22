@@ -1,9 +1,3 @@
-# This pipeline needs the following tasks from Tekton Hub
-#   - git-clone
-#   - flake8
-#   - nose
-#   - buildah
----
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:  
@@ -18,7 +12,7 @@ spec:
       type: string
       default: main
     - name: build-image
-      type: string
+      type: string  # Add this line for the build image parameter
   tasks:
     - name: init
       workspaces:
@@ -62,6 +56,8 @@ spec:
       taskRef:
         name: nose
       params:
+        - name: database_uri
+          value: "sqlite:///test.db"
         - name: args
           value: "-v --with-spec --spec-color"
       runAfter:
@@ -80,4 +76,24 @@ spec:
       runAfter:
         - tests
         - lint
+
+    - name: deploy
+      workspaces:
+        - name: manifest-dir
+          workspace: pipeline-workspace
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      params:
+        - name: SCRIPT
+          value: |
+            echo "Updating manifest..."
+            sed -i "s|IMAGE_NAME_HERE|$(params.build-image)|g" deploy/deployment.yaml
+            cat deploy/deployment.yaml
+            echo "Deploying to OpenShift..."
+            oc apply -f deploy/
+            oc get pods -l app=accounts
+      runAfter:
+        - build
+
 

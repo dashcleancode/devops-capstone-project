@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: accounts
-        image: us.icr.io/sn-labs-davionog2/accounts:1
-        env:  # This should be inside the container definition
+        image: IMAGE_NAME_HERE  # Placeholder for the image name
+        env:
           - name: DATABASE_HOST
             value: postgresql
           - name: DATABASE_NAME
